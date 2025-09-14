@@ -14,13 +14,21 @@ npm install @types/mongodb --save-dev  # if using TypeScript with native MongoDB
 
 ### 2. Environment Variables
 
-Update your `.env` file with your MongoDB connection string:
+Create a `.env.local` file in your project root with your MongoDB connection string:
 
 ```env
+# For local MongoDB instance:
 MONGODB_URI=mongodb://localhost:27017/school-portal
-# or for MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/school-portal?retryWrites=true&w=majority
+
+# For MongoDB Atlas (replace with your actual values):
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/<database-name>?retryWrites=true&w=majority
+
+# Additional environment variables for authentication:
+NEXTAUTH_SECRET=your-nextauth-secret-key
+NEXTAUTH_URL=http://localhost:3000
 ```
+
+⚠️ **Security Note**: Never commit actual credentials to your repository. Always use environment variables and add `.env*` files to your `.gitignore`.
 
 ### 3. Database Connection
 

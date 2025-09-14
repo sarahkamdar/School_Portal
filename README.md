@@ -51,12 +51,22 @@ A comprehensive school management system built with Next.js, TypeScript, and Mon
    ```
 
 3. **Environment Setup**
-   Create a `.env.local` file in the root directory:
+   Copy the example environment file and configure your settings:
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Then edit `.env.local` with your actual values:
    ```env
-   MONGODB_URI=your_mongodb_connection_string
-   NEXTAUTH_SECRET=your_nextauth_secret
+   # Database Configuration
+   MONGODB_URI=your_mongodb_connection_string_here
+   
+   # Authentication Configuration  
+   NEXTAUTH_SECRET=your_secure_random_secret_key_here
    NEXTAUTH_URL=http://localhost:3000
    ```
+   
+   > ⚠️ **Important**: Replace the placeholder values with your actual credentials. Never commit the `.env.local` file to version control.
 
 4. **Database Setup**
    - Ensure MongoDB is running
