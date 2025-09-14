@@ -44,6 +44,14 @@ export async function POST(req: Request) {
     const existingMapping = await db.collection("classTeacherMappings").findOne({ classId: body.classId })
     
     if (existingMapping) {
+      // If replacing an existing teacher, remove isClassTeacher flag from the old teacher
+      if (existingMapping.teacherId !== body.teacherId) {
+        await db.collection("teachers").updateOne(
+          { id: existingMapping.teacherId },
+          { $unset: { isClassTeacher: "", classId: "" } }
+        )
+      }
+      
       // Update existing mapping
       await db.collection("classTeacherMappings").updateOne(
         { classId: body.classId },
@@ -53,6 +61,12 @@ export async function POST(req: Request) {
       // Create new mapping
       await db.collection("classTeacherMappings").insertOne(mappingData)
     }
+    
+    // Update the teacher record with isClassTeacher flag and classId
+    await db.collection("teachers").updateOne(
+      { id: body.teacherId },
+      { $set: { isClassTeacher: true, classId: body.classId } }
+    )
     
     return NextResponse.json({ ok: true, data: mappingData })
   } catch (e: any) {
@@ -71,6 +85,19 @@ export async function DELETE(req: Request) {
     }
     
     const db = await getDb()
+    
+    // Find the existing mapping to get the teacher ID
+    const existingMapping = await db.collection("classTeacherMappings").findOne({ classId })
+    
+    if (existingMapping) {
+      // Remove isClassTeacher flag from the teacher record
+      await db.collection("teachers").updateOne(
+        { id: existingMapping.teacherId },
+        { $unset: { isClassTeacher: "", classId: "" } }
+      )
+    }
+    
+    // Delete the class-teacher mapping
     await db.collection("classTeacherMappings").deleteOne({ classId })
     
     return NextResponse.json({ ok: true })

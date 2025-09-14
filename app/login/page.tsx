@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { actions, presetAdmin } from "@/lib/storage"
 import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -47,6 +48,15 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-[calc(100vh-0px)] items-center justify-center bg-card px-4 py-10">
+      {/* Home redirection button */}
+      <div className="fixed top-4 right-4 z-10">
+        <Link href="/">
+          <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
+            ← Back to Home
+          </Button>
+        </Link>
+      </div>
+      
       <Card className="w-full max-w-md shadow-sm">
         <CardHeader>
           <CardTitle className="text-center">Login</CardTitle>

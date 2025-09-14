@@ -38,14 +38,13 @@ export default function TeacherDashboard() {
   const d = useAppData()
   const [timetables, setTimetables] = useState<ClassTimetable[]>([])
   const [loading, setLoading] = useState(true)
-  
-  if (!teacherId) return null
-  
-  const teacher = d.teachers.find(t => t.id === teacherId)
+  const [today, setToday] = useState<string>("")
 
   // Fetch all timetables and filter for this teacher
   useEffect(() => {
     console.log('[TeacherDashboard] Client component mounted, fetching timetables for teacher:', teacherId)
+    if (!teacherId) return // Skip if no teacherId
+    
     const fetchTimetables = async () => {
       try {
         setLoading(true)
@@ -70,8 +69,15 @@ export default function TeacherDashboard() {
     fetchTimetables()
   }, [teacherId])
 
+  // Get today's day name - client side only to avoid hydration issues
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('en-US', { weekday: 'long' }))
+  }, [])
+
   // Extract entries for this teacher from all timetables
   const entries = useMemo(() => {
+    if (!teacherId) return []
+    
     const teacherEntries: (TimetableEntry & { classId: string })[] = []
     
     timetables.forEach(tt => {
@@ -84,13 +90,6 @@ export default function TeacherDashboard() {
     
     return teacherEntries
   }, [timetables, teacherId])
-  
-  // Get today's day name - client side only to avoid hydration issues
-  const [today, setToday] = useState<string>("")
-  
-  useEffect(() => {
-    setToday(new Date().toLocaleDateString('en-US', { weekday: 'long' }))
-  }, [])
   
   // Get today's classes
   const todayClasses = useMemo(() => {
@@ -125,6 +124,13 @@ export default function TeacherDashboard() {
       return classStudents.some(student => !student.marks[exam.id])
     })
   }, [d.exams, d.classes, d.students, entries])
+
+  // Early return after all hooks are called
+  if (!teacherId) {
+    return null
+  }
+  
+  const teacher = d.teachers.find(t => t.id === teacherId)
 
   return (
     <div className="space-y-6">

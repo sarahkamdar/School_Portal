@@ -177,7 +177,7 @@ export default function ExamsPage() {
                     <TableCell className="font-medium">{ex.name}</TableCell>
                     <TableCell>{cls ? `${cls.name}-${cls.section}` : "-"}</TableCell>
                     <TableCell>{ex.totalMarks || ex.totalPerSubject}</TableCell>
-                    <TableCell>{ex.passingMarks || "-"}</TableCell>
+                    <TableCell>{ex.passingMarks !== undefined && ex.passingMarks !== null ? ex.passingMarks : "-"}</TableCell>
                     <TableCell>{count}</TableCell>
                   </TableRow>
                 )

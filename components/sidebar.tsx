@@ -47,7 +47,6 @@ export function TeacherSidebar() {
     { href: "/teacher/attendance", label: "Attendance", icon: ClipboardCheck },
     { href: "/teacher/marks", label: "Enter Marks", icon: PenTool },
     { href: "/teacher/view-results", label: "View Results", icon: ChartLine },
-    { href: "/teacher/results", label: "Results", icon: BookOpenCheck },
   ]
   return <SidebarBase items={items} />
 }

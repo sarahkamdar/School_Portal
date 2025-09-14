@@ -101,6 +101,11 @@ export default function ViewResultsPage() {
       const totalPossible = (selectedExam?.totalMarks || 100) * classSubjects.length
       const percentage = totalPossible > 0 ? (totalObtained / totalPossible) * 100 : 0
       
+      // Calculate passing percentage based on exam's passing marks
+      const passingMarks = selectedExam?.passingMarks ?? 33
+      const totalMarks = selectedExam?.totalMarks ?? 100
+      const passingPercentage = (passingMarks / totalMarks) * 100
+      
       // Determine grade based on percentage
       let grade = "F"
       if (percentage >= 90) grade = "A+"
@@ -109,7 +114,7 @@ export default function ViewResultsPage() {
       else if (percentage >= 60) grade = "B"
       else if (percentage >= 50) grade = "C+"
       else if (percentage >= 40) grade = "C"
-      else if (percentage >= 33) grade = "D"
+      else if (percentage >= passingPercentage) grade = "D"
 
       return {
         student,
@@ -132,7 +137,13 @@ export default function ViewResultsPage() {
     const averagePercentage = studentsWithMarks.reduce((sum, r) => sum + r.percentage, 0) / totalStudents
     const highestPercentage = Math.max(...studentsWithMarks.map(r => r.percentage))
     const lowestPercentage = Math.min(...studentsWithMarks.map(r => r.percentage))
-    const passCount = studentsWithMarks.filter(r => r.percentage >= 33).length
+    
+    // Calculate passing percentage based on exam's passing marks
+    const passingMarks = selectedExam?.passingMarks ?? 33
+    const totalMarks = selectedExam?.totalMarks ?? 100
+    const passingPercentage = (passingMarks / totalMarks) * 100
+    
+    const passCount = studentsWithMarks.filter(r => r.percentage >= passingPercentage).length
     const passPercentage = (passCount / totalStudents) * 100
 
     return {
@@ -359,7 +370,7 @@ export default function ViewResultsPage() {
                         {classSubjects.map(subject => (
                           <TableCell key={subject.id} className="text-center">
                             {subjectMarks[subject.name] !== undefined ? (
-                              <span className={subjectMarks[subject.name] < (selectedExam?.passingMarks || 33) ? "text-red-600" : "text-green-600"}>
+                              <span className={subjectMarks[subject.name] < (selectedExam?.passingMarks ?? 33) ? "text-red-600" : "text-green-600"}>
                                 {subjectMarks[subject.name]}
                               </span>
                             ) : (
@@ -372,7 +383,7 @@ export default function ViewResultsPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {hasMarks ? (
-                            <span className={percentage < 33 ? "text-red-600" : "text-green-600"}>
+                            <span className={percentage < ((selectedExam?.passingMarks ?? 33) / (selectedExam?.totalMarks ?? 100) * 100) ? "text-red-600" : "text-green-600"}>
                               {percentage}%
                             </span>
                           ) : (

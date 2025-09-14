@@ -1,5 +1,11 @@
 "use client"
 
+// DEPRECATED: This page is no longer used in the application.
+// The "Enter Marks" functionality has been moved to /teacher/marks
+// which provides a better user experience with proper validation,
+// subject filtering, and error handling.
+// The class teacher result overview is available in /teacher/view-results
+
 import { useMemo, useRef, useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { actions, useAppData } from "@/lib/storage"

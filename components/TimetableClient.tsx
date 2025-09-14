@@ -70,21 +70,39 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
     if (!classId) return
 
     const existingTimetable = initialData.find(t => t.classId === classId)
-    if (existingTimetable && existingTimetable.timetable) {
-      console.log('[TimetableClient] Found existing timetable data')
-      setTimetableData(existingTimetable.timetable)
-      setOriginalData(existingTimetable.timetable)
+    if (existingTimetable && existingTimetable.entries) {
+      console.log('[TimetableClient] Found existing timetable data with entries:', existingTimetable.entries)
+      
+      // Convert entries array to nested timetable object
+      const convertedData = initializeEmptyTimetable()
+      existingTimetable.entries.forEach((entry: any) => {
+        if (convertedData[entry.day] && convertedData[entry.day][entry.period]) {
+          const teacher = d.teachers.find(t => t.id === entry.teacherId)
+          convertedData[entry.day][entry.period] = {
+            subject: entry.subject,
+            teacher: teacher ? teacher.name : "",
+            teacherId: entry.teacherId
+          }
+        }
+      })
+      
+      setTimetableData(convertedData)
+      setOriginalData(convertedData)
     } else {
       console.log('[TimetableClient] No existing data, initializing empty timetable')
       const emptyData = initializeEmptyTimetable()
       setTimetableData(emptyData)
       setOriginalData(emptyData)
     }
-  }, [classId, initialData, initializeEmptyTimetable])
+  }, [classId, initialData, initializeEmptyTimetable, d.teachers])
 
   // Handle cell value changes during editing
   const handleCellChange = useCallback((day: string, period: number, field: "subject" | "teacherId", value: string) => {
     console.log('[TimetableClient] Cell change:', day, period, field, value)
+    
+    // Convert __none__ values back to empty strings
+    const actualValue = value === "__none__" ? "" : value
+    
     setTimetableData(prev => {
       const updated = { ...prev }
       if (!updated[day]) updated[day] = {}
@@ -93,16 +111,16 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
       }
 
       if (field === "teacherId") {
-        const selectedTeacher = d.teachers.find(t => t.id === value)
+        const selectedTeacher = actualValue ? d.teachers.find(t => t.id === actualValue) : null
         updated[day][period] = {
           ...updated[day][period],
-          teacherId: value,
+          teacherId: actualValue,
           teacher: selectedTeacher ? selectedTeacher.name : ""
         }
       } else {
         updated[day][period] = {
           ...updated[day][period],
-          [field]: value
+          [field]: actualValue
         }
       }
       
@@ -117,7 +135,13 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
 
     // Validate that at least one cell has data
     const hasData = Object.values(timetableData).some(dayData =>
-      Object.values(dayData).some(entry => entry.subject.trim() !== "")
+      Object.values(dayData).some(entry => 
+        entry.subject && 
+        entry.subject.trim() !== "" && 
+        entry.teacherId && 
+        entry.teacherId.trim() !== "" && 
+        entry.teacherId !== "__none__"
+      )
     )
 
     if (!hasData) {
@@ -131,10 +155,33 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
 
     setIsLoading(true)
     try {
+      // Transform timetableData into the format expected by the API
+      const entries: Array<{day: string, period: number, subject: string, teacherId: string}> = []
+      
+      Object.entries(timetableData).forEach(([day, periods]) => {
+        Object.entries(periods).forEach(([period, entry]) => {
+          // Only include entries with valid subject AND teacher (not empty or __none__)
+          if (entry.subject && 
+              entry.subject.trim() !== "" && 
+              entry.teacherId && 
+              entry.teacherId.trim() !== "" && 
+              entry.teacherId !== "__none__") {
+            entries.push({
+              day,
+              period: parseInt(period),
+              subject: entry.subject,
+              teacherId: entry.teacherId
+            })
+          }
+        })
+      })
+
+      console.log('[TimetableClient] Sending entries to API:', entries)
+
       const response = await fetch(`/api/timetable/${classId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timetable: timetableData })
+        body: JSON.stringify({ entries })
       })
 
       const result = await response.json()
@@ -173,11 +220,20 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
 
   // Get available subjects for the selected class
   const availableSubjects = useMemo(() => {
-    return (d.subjects || []).filter(subject => subject.classId === classId)
+    return (d.subjects || [])
+      .filter(subject => 
+        subject?.id && 
+        subject?.name && 
+        subject?.classId === classId &&
+        subject.id.trim() !== "" &&
+        subject.name.trim() !== ""
+      )
   }, [d.subjects, classId])
 
+  // Calculate selected class before early return
   const selectedClass = d.classes.find(c => c.id === classId)
 
+  // Early return after all hooks and calculations are called
   if (!classId) {
     return (
       <div className="p-6">
@@ -208,7 +264,9 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {d.classes.map(cls => (
+                    {d.classes
+                      .filter(cls => cls?.id && cls?.name && cls.id.trim() !== "" && cls.name.trim() !== "")
+                      .map(cls => (
                       <SelectItem key={cls.id} value={cls.id}>
                         {cls.name}
                       </SelectItem>
@@ -272,21 +330,30 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
                     {days.map(day => {
                       const cellKey = `${day}-${period}`
                       const entry = timetableData[day]?.[period] || { subject: "", teacher: "", teacherId: "" }
+                      // Ensure we always have valid string values for the Select components
+                      // Convert empty strings to __none__ for Select components (Radix UI requirement)
+                      const safeEntry = {
+                        subject: entry.subject || "__none__",
+                        teacher: entry.teacher || "",
+                        teacherId: entry.teacherId || "__none__"
+                      }
                       
                       return (
                         <TableCell key={cellKey} className="p-2">
                           {isEditing ? (
                             <div className="space-y-1">
                               <Select
-                                value={entry.subject}
+                                value={safeEntry.subject}
                                 onValueChange={(value) => handleCellChange(day, period, "subject", value)}
                               >
                                 <SelectTrigger className="h-8 text-xs">
                                   <SelectValue placeholder="Select subject" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">No Subject</SelectItem>
-                                  {availableSubjects.map(subject => (
+                                  <SelectItem value="__none__">No Subject</SelectItem>
+                                  {availableSubjects
+                                    .filter(subject => subject?.id && subject?.name && subject.name.trim() !== "")
+                                    .map(subject => (
                                     <SelectItem key={subject.id} value={subject.name}>
                                       {subject.name}
                                     </SelectItem>
@@ -296,15 +363,17 @@ export function TimetableClient({ initialData }: TimetableClientProps) {
                               
                               {entry.subject && (
                                 <Select
-                                  value={entry.teacherId}
+                                  value={safeEntry.teacherId}
                                   onValueChange={(value) => handleCellChange(day, period, "teacherId", value)}
                                 >
                                   <SelectTrigger className="h-8 text-xs">
                                     <SelectValue placeholder="Select teacher" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="">No Teacher</SelectItem>
-                                    {d.teachers.map(teacher => (
+                                    <SelectItem value="__none__">No Teacher</SelectItem>
+                                    {d.teachers
+                                      .filter(teacher => teacher?.id && teacher?.name && teacher.id.trim() !== "" && teacher.name.trim() !== "")
+                                      .map(teacher => (
                                       <SelectItem key={teacher.id} value={teacher.id}>
                                         {teacher.name}
                                       </SelectItem>

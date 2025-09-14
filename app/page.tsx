@@ -47,7 +47,7 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-6xl gap-4 px-4 pb-12 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {[
             { label: "Instruction Medium", value: "Gujarati" },
-            { label: "Classes", value: "6 to 12" },
+            { label: "Classes", value: "9 to 12" },
             { label: "Male Teachers", value: "9" },
             { label: "Female Teachers", value: "10" },
             { label: "Head Teacher", value: "Puspa A Patel" },

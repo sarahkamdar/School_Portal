@@ -71,6 +71,32 @@ export async function POST(req: Request) {
     const doc = { ...body, id, password }
 
     await db.collection("teachers").updateOne({ id }, { $set: doc }, { upsert: true })
+
+    // If this teacher is assigned as a class teacher, create/update the class-teacher mapping
+    if (doc.isClassTeacher && doc.classId) {
+      const mappingId = `ct_${doc.classId}_${doc.id}`
+      const mappingData = {
+        id: mappingId,
+        classId: doc.classId,
+        teacherId: doc.id,
+        assignedAt: new Date().toISOString()
+      }
+
+      // Check if this class already has a teacher assigned
+      const existingMapping = await db.collection("classTeacherMappings").findOne({ classId: doc.classId })
+      
+      if (existingMapping) {
+        // Update existing mapping
+        await db.collection("classTeacherMappings").updateOne(
+          { classId: doc.classId },
+          { $set: mappingData }
+        )
+      } else {
+        // Create new mapping
+        await db.collection("classTeacherMappings").insertOne(mappingData)
+      }
+    }
+
     return NextResponse.json({ ok: true, data: doc })
   } catch (e: any) {
     const status = e?.name === "ZodError" ? 400 : 500
