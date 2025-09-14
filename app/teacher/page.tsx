@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { NoticeList } from "@/components/notice-list"
 import { useAuth } from "@/components/auth-provider"
-import { getTeacherTimetable, useAppData } from "@/lib/storage"
+import { useAppData } from "@/lib/storage"
 import { 
   Clock, 
   Calendar, 
@@ -15,25 +15,87 @@ import {
   Bell,
   ChevronRight,
   GraduationCap,
-  Users
+  Users,
+  RefreshCw
 } from "lucide-react"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+
+type TimetableEntry = {
+  day: string
+  period: number
+  subject: string
+  teacherId: string
+}
+
+type ClassTimetable = {
+  classId: string
+  entries: TimetableEntry[]
+}
 
 export default function TeacherDashboard() {
   const { teacherId } = useAuth()
   const d = useAppData()
+  const [timetables, setTimetables] = useState<ClassTimetable[]>([])
+  const [loading, setLoading] = useState(true)
   
   if (!teacherId) return null
   
   const teacher = d.teachers.find(t => t.id === teacherId)
-  const entries = getTeacherTimetable(teacherId)
+
+  // Fetch all timetables and filter for this teacher
+  useEffect(() => {
+    console.log('[TeacherDashboard] Client component mounted, fetching timetables for teacher:', teacherId)
+    const fetchTimetables = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/timetable')
+        const result = await response.json()
+        
+        if (result.ok && result.data) {
+          console.log('[TeacherDashboard] Successfully loaded', result.data.length, 'timetables')
+          setTimetables(result.data)
+        } else {
+          console.log('[TeacherDashboard] No timetables found')
+          setTimetables([])
+        }
+      } catch (err) {
+        console.error('[TeacherDashboard] Failed to fetch timetables:', err)
+        setTimetables([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTimetables()
+  }, [teacherId])
+
+  // Extract entries for this teacher from all timetables
+  const entries = useMemo(() => {
+    const teacherEntries: (TimetableEntry & { classId: string })[] = []
+    
+    timetables.forEach(tt => {
+      tt.entries.forEach(entry => {
+        if (entry.teacherId === teacherId) {
+          teacherEntries.push({ ...entry, classId: tt.classId })
+        }
+      })
+    })
+    
+    return teacherEntries
+  }, [timetables, teacherId])
   
-  // Get today's day name
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' })
+  // Get today's day name - client side only to avoid hydration issues
+  const [today, setToday] = useState<string>("")
+  
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('en-US', { weekday: 'long' }))
+  }, [])
   
   // Get today's classes
   const todayClasses = useMemo(() => {
+    if (!today) return [] // Return empty array until today is set
+    
     return entries
       .filter(entry => entry.day === today)
       .sort((a, b) => a.period - b.period)
@@ -84,6 +146,16 @@ export default function TeacherDashboard() {
         </CardHeader>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
+            <span className="text-muted-foreground">Loading your schedule...</span>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Enhanced Notices Display */}
       <NoticeList 
         title="Latest Notices"
@@ -92,8 +164,11 @@ export default function TeacherDashboard() {
         compact={true}
       />
 
-      {/* Today's Timetable */}
-      <Card>
+      {/* Content - only show when not loading */}
+      {!loading && (
+        <>
+          {/* Today's Timetable */}
+          <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -218,6 +293,8 @@ export default function TeacherDashboard() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   )
 }

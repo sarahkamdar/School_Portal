@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,30 +24,48 @@ export function NoticeList({
 }: NoticeListProps) {
   const d = useAppData()
   const { data, error } = useSWR<{ ok: boolean; data: any[] }>("/api/notices", fetcher)
+  const [filteredNotices, setFilteredNotices] = useState<any[]>([])
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const [totalCount, setTotalCount] = useState(0)
   
-  // Use API data if available, fall back to local data
-  const apiList = data?.ok ? data.data : null
-  let allNotices = apiList ?? d.notices
-
-  // Filter out inactive notices and apply expiry date filter
-  allNotices = allNotices.filter((n: any) => {
-    if (!n.active) return false
-    
-    // Filter out expired notices (API should handle this but double-check)
-    if (n.expiryDate && new Date(n.expiryDate) < new Date()) {
-      return false
+  // Initialize current time client-side to avoid hydration mismatch
+  useEffect(() => {
+    setCurrentTime(new Date())
+  }, [])
+  
+  // Filter and sort notices client-side when data or time changes
+  useEffect(() => {
+    if (!currentTime) {
+      setFilteredNotices([])
+      return
     }
     
-    return true
-  })
+    // Use API data if available, fall back to local data
+    const apiList = data?.ok ? data.data : null
+    let allNotices = apiList ?? d.notices
 
-  // Sort by creation date (newest first)
-  const sortedNotices = allNotices.sort((a: any, b: any) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
+    // Filter out inactive notices and apply expiry date filter
+    allNotices = allNotices.filter((n: any) => {
+      if (!n.active) return false
+      
+      // Filter out expired notices (API should handle this but double-check)
+      if (n.expiryDate && new Date(n.expiryDate) < currentTime) {
+        return false
+      }
+      
+      return true
+    })
 
-  // Apply max count if specified
-  const list = maxCount ? sortedNotices.slice(0, maxCount) : sortedNotices
+    // Sort by creation date (newest first)
+    const sortedNotices = allNotices.sort((a: any, b: any) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    // Apply max count if specified
+    const list = maxCount ? sortedNotices.slice(0, maxCount) : sortedNotices
+    setFilteredNotices(list)
+    setTotalCount(sortedNotices.length)
+  }, [data, d.notices, currentTime, maxCount])
 
   return (
     <Card>
@@ -54,15 +73,15 @@ export function NoticeList({
         <CardTitle className="flex items-center gap-2 text-lg">
           <Bell className="h-5 w-5" />
           {title}
-          {list.length > 0 && (
+          {filteredNotices.length > 0 && (
             <Badge variant="secondary" className="ml-auto">
-              {list.length}
+              {filteredNotices.length}
             </Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className={compact ? "space-y-2" : "space-y-3"}>
-        {list.length === 0 ? (
+        {filteredNotices.length === 0 ? (
           showEmptyMessage && (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <CheckCircle className="h-8 w-8 text-green-600 mb-2" />
@@ -71,8 +90,8 @@ export function NoticeList({
             </div>
           )
         ) : (
-          list.map((n: any) => {
-            const now = new Date()
+          filteredNotices.map((n: any) => {
+            const now = currentTime || new Date()
             const createdDate = new Date(n.createdAt)
             const eventDate = n.eventDate ? new Date(n.eventDate) : null
             const expiryDate = n.expiryDate ? new Date(n.expiryDate) : null
@@ -173,10 +192,10 @@ export function NoticeList({
           })
         )}
         
-        {maxCount && allNotices.length > maxCount && (
+        {maxCount && totalCount > maxCount && (
           <div className="pt-2 text-center">
             <p className="text-xs text-muted-foreground">
-              Showing {maxCount} of {allNotices.length} notices
+              Showing {maxCount} of {totalCount} notices
             </p>
           </div>
         )}

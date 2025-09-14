@@ -14,10 +14,21 @@ import {
   Bell,
   AlertTriangle
 } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
 
 export default function AdminDashboard() {
+  console.log('[AdminDashboard] Client component rendering')
   const d = useAppData()
+  
+  // Log when component mounts
+  useEffect(() => {
+    console.log('[AdminDashboard] Client component mounted, data available:', {
+      students: d.students?.length || 0,
+      teachers: d.teachers?.length || 0,
+      classes: d.classes?.length || 0,
+      notices: d.notices?.length || 0
+    })
+  }, [d])
   
   // Calculate pending fees
   const pendingFeesData = useMemo(() => getPendingFeesFrom(d), [d])

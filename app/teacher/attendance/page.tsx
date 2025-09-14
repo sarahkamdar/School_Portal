@@ -19,9 +19,14 @@ export default function TeacherAttendancePage() {
   const classInfo = d.classes.find((c) => c.id === classId)
 
   const students = useMemo(() => d.students.filter((s) => s.classId === classId), [d.students, classId])
-  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState<string>("")
   const [present, setPresent] = useState<Record<string, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Initialize date client-side to avoid hydration mismatch
+  useEffect(() => {
+    setDate(new Date().toISOString().slice(0, 10))
+  }, [])
 
   // Auto-initialize all students as present by default
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAppData } from "@/lib/storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,8 +13,13 @@ import { Calendar, Users, CheckCircle, XCircle, BarChart3 } from "lucide-react"
 export default function AttendancePage() {
   const d = useAppData()
   const [classId, setClassId] = useState(d.classes[0]?.id || "")
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [selectedDate, setSelectedDate] = useState<string>("")
   const [viewMode, setViewMode] = useState<"daily" | "summary">("daily")
+  
+  // Initialize date client-side to avoid hydration mismatch
+  useEffect(() => {
+    setSelectedDate(new Date().toISOString().slice(0, 10))
+  }, [])
   
   const selectedClass = d.classes.find(c => c.id === classId)
   const students = d.students.filter((s) => s.classId === classId)

@@ -18,10 +18,11 @@ const Update = z.object({
   classId: z.string().optional(),
 })
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const db = await getDb()
-    const t = await db.collection("teachers").findOne({ id: params.id })
+    const t = await db.collection("teachers").findOne({ id })
     if (!t) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 })
     return NextResponse.json({ ok: true, data: t })
   } catch (e: any) {
@@ -29,14 +30,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body = Update.parse(await req.json())
     const db = await getDb()
-    await db.collection("teachers").updateOne({ id: params.id }, { $set: body })
+    await db.collection("teachers").updateOne({ id }, { $set: body })
     // optional link class teacher
     if (typeof body.isClassTeacher !== "undefined" && body.classId) {
-      await db.collection("classes").updateOne({ id: body.classId }, { $set: { classTeacherId: body.isClassTeacher ? params.id : undefined } })
+      await db.collection("classes").updateOne({ id: body.classId }, { $set: { classTeacherId: body.isClassTeacher ? id : undefined } })
     }
     return NextResponse.json({ ok: true })
   } catch (e: any) {
@@ -45,11 +47,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const db = await getDb()
-    await db.collection("teachers").deleteOne({ id: params.id })
-    await db.collection("classTimetables").updateMany({}, { $pull: { entries: { teacherId: params.id } } })
+    await db.collection("teachers").deleteOne({ id })
+    await db.collection("classTimetables").updateMany(
+      {},
+      { $pull: { entries: { teacherId: id } } } as any
+    )
     return NextResponse.json({ ok: true })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || "Failed" }, { status: 500 })
