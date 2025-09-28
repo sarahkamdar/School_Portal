@@ -54,6 +54,23 @@ export function TeacherSidebar() {
 function SidebarBase({ items }: { items: Item[] }) {
   const pathname = usePathname()
   const { logout } = useAuth()
+  
+  // Helper function to determine if a menu item should be active
+  const isActive = (href: string) => {
+    // For exact matches (like dashboard pages)
+    if (pathname === href) return true
+    
+    // For nested routes, only highlight if it's not the root dashboard path
+    // and the pathname starts with the href followed by a slash
+    if (href.endsWith('/admin') || href.endsWith('/teacher')) {
+      // Dashboard pages should only be active for exact matches
+      return pathname === href
+    }
+    
+    // For other pages, check if pathname starts with href followed by a slash
+    return pathname.startsWith(`${href}/`)
+  }
+  
   return (
     <motion.aside
       initial={{ x: -14, opacity: 0 }}
@@ -66,7 +83,7 @@ function SidebarBase({ items }: { items: Item[] }) {
       </div>
       <nav className="p-2">
         {items.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`)
+          const active = isActive(href)
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}>
               <div
